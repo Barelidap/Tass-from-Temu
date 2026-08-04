@@ -5,6 +5,7 @@ A modular computer vision project that simulates the core ideas behind retail an
 The project uses a webcam to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics without identifying individuals.
 
 ##Project Pipeline
+
                     Webcam
                        │
                        ▼
