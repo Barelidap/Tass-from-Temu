@@ -7,14 +7,19 @@ def format_duration(seconds: float) -> str:
 
     return f"{minutes:02d}:{seconds:02d}"
 
-
 def draw_person(
     frame,
     box,
     track_id: int,
     duration: float,
     confidence: float,
+    age_group: str | None,
+    age_confidence: float | None,
 ) -> None:
+    """
+    Draw a tracked person, visit duration, and age estimate.
+    """
+
     x1, y1, x2, y2 = map(int, box)
 
     cv2.rectangle(
@@ -25,18 +30,37 @@ def draw_person(
         2,
     )
 
-    label = (
+    tracking_text = (
         f"ID {track_id} | "
         f"{format_duration(duration)} | "
         f"{confidence:.0%}"
     )
 
+    if age_group is None:
+        age_text = "Age: estimating"
+    else:
+        age_text = f"Age: {age_group}"
+
+        if age_confidence is not None:
+            age_text += f" ({age_confidence:.0%})"
+
     cv2.putText(
         frame,
-        label,
-        (x1, max(y1 - 10, 25)),
+        tracking_text,
+        (x1, max(y1 - 35, 25)),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.65,
+        0.60,
+        (0, 255, 0),
+        2,
+        cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        frame,
+        age_text,
+        (x1, max(y1 - 10, 50)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.60,
         (0, 255, 0),
         2,
         cv2.LINE_AA,
