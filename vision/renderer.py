@@ -15,9 +15,11 @@ def draw_person(
     confidence: float,
     age_group: str | None,
     age_confidence: float | None,
+    gender: str | None,
+    gender_confidence: float | None,
 ) -> None:
     """
-    Draw a tracked person, visit duration, and age estimate.
+    Draw a tracked person, visit duration, and demographic estimates.
     """
 
     x1, y1, x2, y2 = map(int, box)
@@ -44,10 +46,18 @@ def draw_person(
         if age_confidence is not None:
             age_text += f" ({age_confidence:.0%})"
 
+    if gender is None:
+        gender_text = "Gender: estimating"
+    else:
+        gender_text = f"Gender: {gender}"
+
+        if gender_confidence is not None:
+            gender_text += f" ({gender_confidence:.0%})"
+
     cv2.putText(
         frame,
         tracking_text,
-        (x1, max(y1 - 35, 25)),
+        (x1, max(y1 - 60, 25)),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.60,
         (0, 255, 0),
@@ -58,7 +68,7 @@ def draw_person(
     cv2.putText(
         frame,
         age_text,
-        (x1, max(y1 - 10, 50)),
+        (x1, max(y1 - 35, 50)),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.60,
         (0, 255, 0),
@@ -66,6 +76,16 @@ def draw_person(
         cv2.LINE_AA,
     )
 
+    cv2.putText(
+        frame,
+        gender_text,
+        (x1, max(y1 - 10, 75)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.60,
+        (0, 255, 0),
+        2,
+        cv2.LINE_AA,
+    )
 
 def draw_statistics(
     frame,

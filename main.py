@@ -24,6 +24,9 @@ from vision.config import (
     MIN_PERSON_CROP_WIDTH,
     MODEL_PATH,
     WINDOW_NAME,
+    GENDER_ESTIMATION_INTERVAL,
+    GENDER_MODEL_NAME,
+    MAX_GENDER_ESTIMATION_ATTEMPTS
 )
 from vision.face_detector import FaceDetector
 from vision.renderer import (
@@ -32,6 +35,7 @@ from vision.renderer import (
 )
 from vision.visitor_tracker import VisitorTracker
 
+from vision.gender_estimator import GenderEstimator
 
 def main() -> None:
     # YOLO detects full people.
@@ -63,6 +67,10 @@ def main() -> None:
     # The ViT classifier estimates an age group from a face crop.
     age_estimator = AgeEstimator(
         model_name=AGE_MODEL_NAME
+    )
+
+    gender_estimator = GenderEstimator(
+        model_name=GENDER_MODEL_NAME
     )
 
     frame_number = 0
@@ -144,8 +152,7 @@ def main() -> None:
                     )
 
                     should_estimate_age = (
-                        visitor_tracker
-                        .should_attempt_age_estimation(
+                        visitor_tracker.should_attempt_age_estimation(
                             track_id=track_id,
                             frame_number=frame_number,
                             estimation_interval=(
@@ -157,23 +164,51 @@ def main() -> None:
                         )
                     )
 
-                    if (
-                        crop_is_large_enough
-                        and should_estimate_age
-                    ):
-                        # Record the attempt even when face detection fails.
-                        visitor_tracker.register_age_attempt(
+                    should_estimate_gender = (
+                        visitor_tracker
+                        .should_attempt_gender_estimation(
                             track_id=track_id,
                             frame_number=frame_number,
+                            estimation_interval=(
+                                GENDER_ESTIMATION_INTERVAL
+                            ),
+                            maximum_attempts=(
+                                MAX_GENDER_ESTIMATION_ATTEMPTS
+                            ),
                         )
+                    )
 
-                        # First crop the complete person from the frame.
+                    should_estimate_demographics = (
+                        should_estimate_age
+                        or should_estimate_gender
+                    )
+
+                    if (
+                        crop_is_large_enough
+                        and should_estimate_demographics
+                    ):
+                        # Each missing demographic keeps its own
+                        # attempt counter.
+                        if should_estimate_age:
+                            visitor_tracker.register_age_attempt(
+                                track_id=track_id,
+                                frame_number=frame_number,
+                            )
+
+                        if should_estimate_gender:
+                            visitor_tracker.register_gender_attempt(
+                                track_id=track_id,
+                                frame_number=frame_number,
+                            )
+
+                        # Crop the person once.
                         person_crop = frame[
                             y1:y2,
                             x1:x2,
                         ]
 
-                        # Then find and crop the face inside that body crop.
+                        # Detect the face once and reuse it for both
+                        # demographic models.
                         face_crop = (
                             face_detector.detect_largest_face(
                                 person_crop
@@ -181,22 +216,41 @@ def main() -> None:
                         )
 
                         if face_crop is not None:
-                            age_prediction = (
-                                age_estimator.estimate(
-                                    face_crop
+                            if should_estimate_age:
+                                age_prediction = (
+                                    age_estimator.estimate(
+                                        face_crop
+                                    )
                                 )
-                            )
 
-                            if age_prediction is not None:
-                                visitor_tracker.set_age(
-                                    track_id=track_id,
-                                    age_group=(
-                                        age_prediction.age_group
-                                    ),
-                                    confidence=(
-                                        age_prediction.confidence
-                                    ),
+                                if age_prediction is not None:
+                                    visitor_tracker.set_age(
+                                        track_id=track_id,
+                                        age_group=(
+                                            age_prediction.age_group
+                                        ),
+                                        confidence=(
+                                            age_prediction.confidence
+                                        ),
+                                    )
+
+                            if should_estimate_gender:
+                                gender_prediction = (
+                                    gender_estimator.estimate(
+                                        face_crop
+                                    )
                                 )
+
+                                if gender_prediction is not None:
+                                    visitor_tracker.set_gender(
+                                        track_id=track_id,
+                                        gender=(
+                                            gender_prediction.gender
+                                        ),
+                                        confidence=(
+                                            gender_prediction.confidence
+                                        ),
+                                    )
 
                     duration = (
                         visitor_tracker.get_live_duration(
@@ -205,7 +259,6 @@ def main() -> None:
                         )
                     )
 
-                    # The Visitor object now contains the age fields.
                     draw_person(
                         frame=annotated_frame,
                         box=(x1, y1, x2, y2),
@@ -215,6 +268,10 @@ def main() -> None:
                         age_group=visitor.age_group,
                         age_confidence=(
                             visitor.age_confidence
+                        ),
+                        gender=visitor.gender,
+                        gender_confidence=(
+                            visitor.gender_confidence
                         ),
                     )
 
@@ -231,10 +288,17 @@ def main() -> None:
                     else "unknown"
                 )
 
+                gender_text = (
+                    visitor.gender
+                    if visitor.gender is not None
+                    else "unknown"
+                )
+
                 print(
                     f"Visit completed: ID {track_id}, "
                     f"duration {visitor.duration:.1f} seconds, "
-                    f"age {age_text}"
+                    f"age {age_text}, "
+                    f"gender {gender_text}"
                 )
 
             draw_statistics(

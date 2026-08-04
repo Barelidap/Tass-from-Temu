@@ -15,9 +15,17 @@ class Visitor:
     age_group: str | None = None
     age_confidence: float | None = None
 
+    # These remain None until gender estimation succeeds.
+    gender: str | None = None
+    gender_confidence: float | None = None
+
     # Used to avoid running age estimation every frame.
     age_estimation_attempts: int = 0
     last_age_attempt_frame: int | None = None
+
+    # Used to avoid running gender estimation every frame.
+    gender_estimation_attempts: int = 0
+    last_gender_attempt_frame: int | None = None
 
     @property
     def duration(self) -> float:
@@ -35,6 +43,14 @@ class Visitor:
         """
 
         return self.age_group is not None
+
+    @property
+    def has_gender_estimate(self) -> bool:
+        """
+        True after a valid gender prediction has been stored.
+        """
+
+        return self.gender is not None
 
 
 class VisitorTracker:
@@ -163,6 +179,76 @@ class VisitorTracker:
 
         visitor.age_group = age_group
         visitor.age_confidence = confidence
+    def should_attempt_gender_estimation(
+        self,
+        track_id: int,
+        frame_number: int,
+        estimation_interval: int,
+        maximum_attempts: int,
+    ) -> bool:
+        """
+        Decide whether gender estimation should run for this visitor.
+        """
+
+        visitor = self.active_visitors.get(track_id)
+
+        if visitor is None:
+            return False
+
+        # Gender is already known, so no more inference is needed.
+        if visitor.has_gender_estimate:
+            return False
+
+        # Stop repeatedly trying when no usable prediction is produced.
+        if visitor.gender_estimation_attempts >= maximum_attempts:
+            return False
+
+        # Allow the first attempt immediately.
+        if visitor.last_gender_attempt_frame is None:
+            return True
+
+        frames_since_last_attempt = (
+            frame_number - visitor.last_gender_attempt_frame
+        )
+
+        return frames_since_last_attempt >= estimation_interval
+
+    def register_gender_attempt(
+        self,
+        track_id: int,
+        frame_number: int,
+    ) -> None:
+        """
+        Record that face detection and gender estimation were attempted.
+        """
+
+        visitor = self.active_visitors.get(track_id)
+
+        if visitor is None:
+            return
+
+        visitor.gender_estimation_attempts += 1
+        visitor.last_gender_attempt_frame = frame_number
+
+    def set_gender(
+        self,
+        track_id: int,
+        gender: str,
+        confidence: float,
+    ) -> None:
+        """
+        Save the first successful gender prediction.
+
+        Once stored, it is not overwritten.
+        """
+
+        visitor = self.active_visitors.get(track_id)
+
+        if visitor is None or visitor.has_gender_estimate:
+            return
+
+        visitor.gender = gender
+        visitor.gender_confidence = confidence
 
     def get_live_duration(
         self,

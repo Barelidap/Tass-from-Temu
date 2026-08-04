@@ -42,3 +42,12 @@ FACE_CROP_MARGIN = 0.15
 # Ignore faces that are too small for useful age estimation.
 MIN_FACE_WIDTH = 40
 MIN_FACE_HEIGHT = 40
+
+# Hugging Face gender-classification model.
+GENDER_MODEL_NAME = "dima806/fairface_gender_image_detection"
+
+# Try gender estimation only once every this many frames.
+GENDER_ESTIMATION_INTERVAL = 15
+
+# Stop trying when gender estimation repeatedly fails.
+MAX_GENDER_ESTIMATION_ATTEMPTS = 10
