@@ -2,7 +2,10 @@
 
 A modular computer vision project that recreates the core ideas behind modern retail analytics systems using open-source tools.
 
-The application processes a live webcam feed to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics **without identifying individuals**.
+The application processes a live webcam feed to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics.
+
+<img width="843" height="589" alt="Screenshot 2026-08-05 at 4 56 39 AM" src="https://github.com/user-attachments/assets/182af845-f6d9-4ef2-bbca-6f1e91766ac5" />
+
 
 ## Features
 
