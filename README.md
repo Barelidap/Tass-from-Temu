@@ -13,6 +13,7 @@ The application processes a live webcam feed to detect and anonymously track vis
 - Age estimation (performed only once per visitor)
 - Gender estimation (performed only once per visitor)
 - Live visitor statistics
+- Live video streaming through a **FastAPI** web interface
 - SQLite persistence for completed visits
 - Modular, easy-to-extend architecture
 
@@ -66,7 +67,13 @@ The application processes a live webcam feed to detect and anonymously track vis
             Update Visitor Statistics
                        │
                        ▼
-                Render Dashboard
+             Render Annotated Frame
+                       │
+                       ▼
+          FastAPI MJPEG Video Stream
+                       │
+                       ▼
+                Web Browser
 ```
 
 ---
@@ -90,8 +97,6 @@ Every frame from the webcam follows the same processing pipeline:
 9. Once a visit is completed, its statistics are permanently stored in a local **SQLite** database.
 
 This significantly reduces unnecessary computation since demographic models are executed only once per visitor while also allowing long-term analytics to be collected across multiple sessions.
-
-This significantly reduces unnecessary computation since demographic models are executed only once per visitor.
 
 ---
 
@@ -173,8 +178,7 @@ Like age estimation, gender estimation is executed only until a successful predi
 ---
 
 ## Renderer
-
-Draws the live visualization, including:
+Draws the live visualization directly onto each processed frame before it is streamed through the FastAPI web interface:
 
 - person bounding boxes
 - visitor IDs
@@ -182,6 +186,26 @@ Draws the live visualization, including:
 - estimated age
 - estimated gender
 - live visitor statistics
+
+  
+---
+
+# FastAPI Web Interface
+
+Instead of displaying frames in a native OpenCV window, the application serves the processed video stream through a lightweight **FastAPI** web server.
+
+The browser connects to the server using an MJPEG stream, allowing the live annotated frames to be viewed from any device on the same network.
+
+The web interface currently provides:
+
+- live camera stream
+- real-time object detection and tracking
+- rendered visitor analytics
+- responsive browser-based visualization
+
+This architecture cleanly separates the computer vision pipeline from the presentation layer, making it easy to extend the project with future dashboards, REST APIs, or remote monitoring capabilities.
+
+
 
 ---
 # SQLite Persistence
