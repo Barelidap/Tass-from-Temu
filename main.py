@@ -1,4 +1,6 @@
 import time
+import uuid
+from datetime import datetime
 
 import cv2
 from ultralytics import YOLO
@@ -37,7 +39,26 @@ from vision.visitor_tracker import VisitorTracker
 
 from vision.gender_estimator import GenderEstimator
 
+from database.visit_repository import VisitRepository
+
 def main() -> None:
+    # Create one unique identifier for this application run.
+    #
+    # ByteTrack IDs may restart from 1 whenever the program restarts,
+    # so session_id lets us distinguish between separate runs.
+    session_id = str(uuid.uuid4())
+
+    # Opens data/tass.db and creates the visits table if necessary.
+    visit_repository = VisitRepository(
+        database_path="data/tass.db"
+    )
+
+    print(f"Application session: {session_id}")
+    print(
+        f"Existing database visits: "
+        f"{visit_repository.get_visit_count()}"
+    )
+
     # YOLO detects full people.
     # ByteTrack is used through model.track() below.
     person_model = YOLO(MODEL_PATH)
@@ -78,7 +99,13 @@ def main() -> None:
     try:
         while True:
             frame = camera.read()
+
+            # Monotonic time is used for duration calculations.
             current_time = time.monotonic()
+
+            # Real local time is stored in SQLite.
+            current_datetime = datetime.now().astimezone()
+
             frame_number += 1
 
             # Detect people and maintain temporary ByteTrack IDs.
@@ -120,6 +147,7 @@ def main() -> None:
                 visitor_tracker.update_visible_visitors(
                     track_ids=track_ids,
                     current_time=current_time,
+                    current_datetime=current_datetime,
                 )
 
                 for box, track_id, confidence in zip(
@@ -294,8 +322,18 @@ def main() -> None:
                     else "unknown"
                 )
 
+                # Save the visitor exactly once, only after the visit finishes.
+                database_visit_id = visit_repository.save_visit(
+                    session_id=session_id,
+                    tracker_id=track_id,
+                    visitor=visitor,
+                )
+
                 print(
-                    f"Visit completed: ID {track_id}, "
+                    f"Visit saved: database ID {database_visit_id}, "
+                    f"tracker ID {track_id}, "
+                    f"entered {visitor.entered_at.isoformat()}, "
+                    f"left {visitor.left_at.isoformat()}, "
                     f"duration {visitor.duration:.1f} seconds, "
                     f"age {age_text}, "
                     f"gender {gender_text}"
@@ -328,6 +366,7 @@ def main() -> None:
         # Release resources even when an exception occurs.
         camera.release()
         face_detector.close()
+        visit_repository.close()
         cv2.destroyAllWindows()
 
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import time
 
 
@@ -6,10 +7,23 @@ import time
 class Visitor:
     """
     Temporary state belonging to one ByteTrack ID.
+
+    Monotonic timestamps are used for accurate duration calculations.
+
+    Real datetime values are stored separately so that we know
+    the actual date and time when the visitor entered and left.
     """
 
+    # Monotonic timestamps.
     first_seen: float
     last_seen: float
+
+    # Real-world timestamps.
+    entered_at: datetime
+    last_seen_at: datetime
+
+    # Set when the visit is completed.
+    left_at: datetime | None = None
 
     # These remain None until age estimation succeeds.
     age_group: str | None = None
@@ -31,7 +45,9 @@ class Visitor:
     def duration(self) -> float:
         """
         Duration up to the most recent frame in which the visitor
-        was visible.
+        was actually visible.
+
+        We do not include the disappearance timeout in the duration.
         """
 
         return self.last_seen - self.first_seen
@@ -60,27 +76,35 @@ class VisitorTracker:
     ) -> None:
         self.disappearance_timeout = disappearance_timeout
 
-        # Dictionary key = ByteTrack ID.
+        # Dictionary key = temporary ByteTrack ID.
         self.active_visitors: dict[int, Visitor] = {}
 
-        # Store completed Visitor objects, not only their durations.
-        # This lets us access their age later when adding a database.
+        # Keep completed visits in memory for the current application session.
+        #
+        # SQLite will preserve them permanently between restarts.
         self.completed_visitors: list[Visitor] = []
 
     def update_visible_visitors(
         self,
         track_ids: list[int],
         current_time: float | None = None,
+        current_datetime: datetime | None = None,
     ) -> list[int]:
         """
-        Create visitors for new IDs and update last_seen for
-        existing IDs.
+        Create Visitor objects for new ByteTrack IDs.
+
+        Existing visitors have both their monotonic and real-world
+        last-seen values updated.
 
         Returns IDs that were created during this call.
         """
 
         if current_time is None:
             current_time = time.monotonic()
+
+        if current_datetime is None:
+            # astimezone() creates a timezone-aware local datetime.
+            current_datetime = datetime.now().astimezone()
 
         new_track_ids: list[int] = []
 
@@ -91,11 +115,15 @@ class VisitorTracker:
                 self.active_visitors[track_id] = Visitor(
                     first_seen=current_time,
                     last_seen=current_time,
+                    entered_at=current_datetime,
+                    last_seen_at=current_datetime,
                 )
 
                 new_track_ids.append(track_id)
+
             else:
                 visitor.last_seen = current_time
+                visitor.last_seen_at = current_datetime
 
         return new_track_ids
 
@@ -104,7 +132,7 @@ class VisitorTracker:
         track_id: int,
     ) -> Visitor | None:
         """
-        Retrieve the Visitor associated with a ByteTrack ID.
+        Retrieve the active Visitor associated with a ByteTrack ID.
         """
 
         return self.active_visitors.get(track_id)
@@ -129,7 +157,7 @@ class VisitorTracker:
         if visitor.has_age_estimate:
             return False
 
-        # Stop repeatedly trying when no usable face can be found.
+        # Stop after too many failed attempts.
         if visitor.age_estimation_attempts >= maximum_attempts:
             return False
 
@@ -179,6 +207,7 @@ class VisitorTracker:
 
         visitor.age_group = age_group
         visitor.age_confidence = confidence
+
     def should_attempt_gender_estimation(
         self,
         track_id: int,
@@ -195,15 +224,12 @@ class VisitorTracker:
         if visitor is None:
             return False
 
-        # Gender is already known, so no more inference is needed.
         if visitor.has_gender_estimate:
             return False
 
-        # Stop repeatedly trying when no usable prediction is produced.
         if visitor.gender_estimation_attempts >= maximum_attempts:
             return False
 
-        # Allow the first attempt immediately.
         if visitor.last_gender_attempt_frame is None:
             return True
 
@@ -219,7 +245,7 @@ class VisitorTracker:
         frame_number: int,
     ) -> None:
         """
-        Record that face detection and gender estimation were attempted.
+        Record that gender estimation was attempted.
         """
 
         visitor = self.active_visitors.get(track_id)
@@ -255,6 +281,10 @@ class VisitorTracker:
         track_id: int,
         current_time: float | None = None,
     ) -> float:
+        """
+        Calculate how long the visitor has been present so far.
+        """
+
         if current_time is None:
             current_time = time.monotonic()
 
@@ -270,8 +300,11 @@ class VisitorTracker:
         current_time: float | None = None,
     ) -> list[tuple[int, Visitor]]:
         """
-        Finish visits whose IDs have not been seen for longer than
-        the disappearance timeout.
+        Finish visitors whose ByteTrack IDs have not been seen for
+        longer than the disappearance timeout.
+
+        left_at is set to the last moment when the visitor was
+        actually visible, not the later timeout moment.
         """
 
         if current_time is None:
@@ -284,6 +317,12 @@ class VisitorTracker:
             missing_duration = current_time - visitor.last_seen
 
             if missing_duration > self.disappearance_timeout:
+                # Use the visitor's last visible timestamp.
+                #
+                # Otherwise, a 2-second disappearance timeout would
+                # incorrectly add 2 seconds to every visit.
+                visitor.left_at = visitor.last_seen_at
+
                 self.completed_visitors.append(visitor)
 
                 finished_visits.append(
