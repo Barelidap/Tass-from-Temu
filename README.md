@@ -13,6 +13,7 @@ The application processes a live webcam feed to detect and anonymously track vis
 - Age estimation (performed only once per visitor)
 - Gender estimation (performed only once per visitor)
 - Live visitor statistics
+- SQLite persistence for completed visits
 - Modular, easy-to-extend architecture
 
 ---
@@ -85,6 +86,10 @@ Every frame from the webcam follows the same processing pipeline:
 5. The estimated information is stored inside the visitor object.
 6. Future frames reuse the stored values instead of running the models again.
 7. The renderer displays all live analytics on screen.
+8. If a visitor disappears from the frame, the system waits **2 seconds** before considering the visit complete. This helps avoid ending visits due to brief tracking interruptions.
+9. Once a visit is completed, its statistics are permanently stored in a local **SQLite** database.
+
+This significantly reduces unnecessary computation since demographic models are executed only once per visitor while also allowing long-term analytics to be collected across multiple sessions.
 
 This significantly reduces unnecessary computation since demographic models are executed only once per visitor.
 
@@ -128,12 +133,16 @@ Each visitor stores:
 - first appearance
 - last appearance
 - visit duration
+- entry timestamp
+- exit timestamp
 - estimated age range
 - age confidence
 - estimated gender
 - gender confidence
 
 The tracker also ensures that demographic estimation is performed only when necessary.
+
+A visitor is considered to have left only after being absent from the frame for **2 seconds**. At that point, the visit is finalized and passed to the SQLite database for permanent storage.
 
 No personally identifiable information is stored.
 
@@ -175,17 +184,29 @@ Draws the live visualization, including:
 - live visitor statistics
 
 ---
+# SQLite Persistence
 
-# Privacy
+Completed visits are stored in a local **SQLite** database, allowing analytics to persist even after the application is restarted.
 
-This project is designed around anonymous retail analytics.
+Each completed visit contains:
 
-It does **not**:
+- visitor tracking ID
+- entry timestamp
+- exit timestamp
+- visit duration
+- estimated age range
+- age confidence
+- estimated gender
+- gender confidence
 
-- perform face recognition
-- identify individuals
-- store face images
-- store biometric templates
-- keep personally identifiable information
+The database serves as the foundation for future analytics dashboards, including:
 
-Only temporary visitor statistics are maintained while a visitor is present in the scene.
+- visitors by hour
+- visitors by day
+- age distribution
+- gender distribution
+- average visit duration
+- traffic trends over time
+
+Only completed visits are stored. Active visitors remain in memory until they leave the scene.
+
