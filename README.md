@@ -50,19 +50,19 @@ The project uses a webcam to detect and anonymously track visitors in real time,
                        │
                        ▼
                 Render Dashboard
-## Architecture
+### Architecture
 The project follows a modular architecture.
 
-## Camera
+### Camera
 Responsible only for capturing webcam frames.
 
-## Detector
+### Detector
 Runs YOLO to detect people.
 
-## Tracker
+### Tracker
 Uses ByteTrack to assign temporary IDs and keep them consistent between frames.
 
-## VisitorTracker
+### VisitorTracker
 Maintains the lifecycle of each visitor.
 
 Each visitor stores:
@@ -74,13 +74,13 @@ Each visitor stores:
 
 No personally identifiable information is stored.
 
-## Face Detector
+### Face Detector
 Detects a face only inside the detected person's bounding box.
 
-## Age Estimator
+### Age Estimator
 Predicts an age range from the detected face.
 
-## Renderer
+### Renderer
 Draws all overlays including:
 -bounding boxes
 -visitor IDs
