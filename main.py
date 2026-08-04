@@ -23,43 +23,80 @@ while True:
 
     ## class 0 is a person 
     ## verbose=false stops unnecessary info
-
-    results = model.predict(
+    results = model.track(
         source=frame,
+        persist = True, #### keps tracking info between consecutive frames
+        tracker = "bytetrack.yaml", ## tracking algo
         classes=[0],
-        conf=0.5,
+        conf=0.7,
         verbose = False,
     )
 
     result = results[0]
 
-    people_count = len(result.boxes)
+    annotated_frame = frame.copy()
 
-    annotated_frame = result.plot() ##box
+    curr_people_count = 0
 
+    if result.boxes is not None and result.boxes.id is not None:
+        boxes = result.boxes.xyxy.cpu().numpy() ## box coordinates
+
+        track_ids = result.boxes.id.int().cpu().tolist() ## temporary tracking ids from bytetrack
+
+
+        curr_people_count = len(track_ids)
+
+        ## draw every box
+        for box, track_id in zip(boxes, track_ids):
+            x1,y1,x2,y2 = map(int, box)
+
+            cv2.rectangle(
+                annotated_frame,
+                (x1, y1),
+                (x2, y2),
+                (0, 255, 0),
+                2
+            )
+
+            label = f"Person ID: {track_id}"
+
+            cv2.putText(
+                annotated_frame,
+                label,
+                (x1, max(y1 - 10, 25)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2,
+                cv2.LINE_AA
+            )
+   # Display the current number of tracked people.
     cv2.putText(
         annotated_frame,
-        f"people on frome: {people_count}",
-        (20,45),
+        f"Currently visible: {curr_people_count}",
+        (20, 45),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
-        (0,255,0),
+        (0, 255, 0),
         2,
         cv2.LINE_AA,
     )
 
     cv2.putText(
         annotated_frame,
-        "q to quit",
-        (20,85),
+        "Press Q to quit",
+        (20, 85),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
-        (255,255,255),
+        (255, 255, 255),
         2,
         cv2.LINE_AA,
     )
 
-    cv2.imshow("TASS from Aliexpress", annotated_frame)
+    cv2.imshow(
+        "Tass from Temu - Version 2",
+        annotated_frame,
+    )
 
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
