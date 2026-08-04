@@ -1,46 +1,59 @@
-
 * {
     box-sizing: border-box;
 }
 
+html {
+    min-height: 100%;
+}
+
 body {
-    margin: 0;
     min-height: 100vh;
-    background: #0b0b0b;
-    color: white;
-    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #0b0d12;
+    color: #f4f6fb;
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
 }
 
 .header {
-    height: 72px;
-    display: flex;
-    align-items: center;
-    padding: 0 32px;
-    border-bottom: 1px solid #2a2a2a;
-    background: #111111;
+    padding: 28px 32px 18px;
+    text-align: center;
 }
 
 .header h1 {
     margin: 0;
-    font-size: 24px;
-    font-weight: 600;
-    text-transform: lowercase;
+    font-size: 34px;
+}
+
+.subtitle {
+    margin: 8px 0 0;
+    color: #9ba4b5;
 }
 
 .main {
-    min-height: calc(100vh - 72px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
+    width: 100%;
+    padding: 18px 32px 40px;
+}
+
+.dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    gap: 24px;
+    width: min(1500px, 100%);
+    margin: 0 auto;
+    align-items: start;
 }
 
 .video-container {
-    width: min(1200px, 100%);
     overflow: hidden;
-    border: 1px solid #2a2a2a;
-    border-radius: 10px;
-    background: black;
+    min-height: 400px;
+    background: #000000;
+    border: 1px solid #242a36;
+    border-radius: 16px;
 }
 
 .video-stream {
@@ -49,18 +62,134 @@ body {
     height: auto;
 }
 
-@media (max-width: 600px) {
-    .header {
-        height: 60px;
-        padding: 0 18px;
-    }
+.statistics-panel {
+    padding: 22px;
+    background: #151922;
+    border: 1px solid #282f3d;
+    border-radius: 16px;
+}
 
-    .header h1 {
-        font-size: 20px;
+.statistics-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.statistics-heading h2 {
+    margin: 0;
+    font-size: 21px;
+}
+
+.statistics-heading p {
+    margin: 7px 0 0;
+    color: #9ba4b5;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.connection-status {
+    flex-shrink: 0;
+    height: fit-content;
+    padding: 7px 10px;
+    background: #2b303b;
+    color: #aeb6c5;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.connection-status.connected {
+    background: #163d2c;
+    color: #7ce2ad;
+}
+
+.statistics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.stat-card {
+    display: flex;
+    min-height: 105px;
+    padding: 17px;
+    background: #1d222d;
+    border: 1px solid #2c3341;
+    border-radius: 12px;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.stat-card-main {
+    min-height: 130px;
+    margin-bottom: 12px;
+}
+
+.stat-label {
+    color: #aeb6c5;
+    font-size: 14px;
+}
+
+.stat-value {
+    font-size: 28px;
+}
+
+.stat-card-main .stat-value {
+    font-size: 48px;
+}
+
+.age-section {
+    margin-top: 24px;
+}
+
+.age-section h3 {
+    margin: 0 0 12px;
+}
+
+.age-groups {
+    overflow: hidden;
+    border: 1px solid #2c3341;
+    border-radius: 12px;
+}
+
+.age-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 13px 15px;
+    background: #1d222d;
+    border-bottom: 1px solid #2c3341;
+}
+
+.age-row:last-child {
+    border-bottom: none;
+}
+
+.empty-message {
+    margin: 0;
+    padding: 16px;
+    background: #1d222d;
+    color: #9ba4b5;
+}
+
+@media (max-width: 950px) {
+    .dashboard {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .header {
+        padding-right: 18px;
+        padding-left: 18px;
     }
 
     .main {
-        min-height: calc(100vh - 60px);
-        padding: 12px;
+        padding-right: 18px;
+        padding-left: 18px;
+    }
+
+    .statistics-grid {
+        grid-template-columns: 1fr;
     }
 }

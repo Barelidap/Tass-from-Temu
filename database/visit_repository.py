@@ -188,6 +188,93 @@ class VisitRepository:
 
         return int(row["visit_count"])
 
+    def get_statistics(self) -> dict:
+        """
+        Return statistics calculated from all completed visits.
+
+        Only completed visits exist in SQLite, so these numbers update
+        after a visitor has been missing longer than the configured
+        disappearance timeout.
+        """
+
+        cursor = self.connection.cursor()
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total_visits,
+                COALESCE(AVG(duration_seconds), 0) AS average_duration,
+
+                SUM(
+                    CASE
+                        WHEN LOWER(gender) = 'male' THEN 1
+                        ELSE 0
+                    END
+                ) AS male_visits,
+
+                SUM(
+                    CASE
+                        WHEN LOWER(gender) = 'female' THEN 1
+                        ELSE 0
+                    END
+                ) AS female_visits,
+
+                SUM(
+                    CASE
+                        WHEN gender IS NULL
+                             OR LOWER(gender) NOT IN ('male', 'female')
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS unknown_gender_visits
+
+            FROM visits
+            """
+        )
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return {
+                "total_visits": 0,
+                "average_duration": 0.0,
+                "male_visits": 0,
+                "female_visits": 0,
+                "unknown_gender_visits": 0,
+                "age_groups": {},
+            }
+
+        cursor.execute(
+            """
+            SELECT
+                COALESCE(age_group, 'unknown') AS age_group,
+                COUNT(*) AS visitor_count
+            FROM visits
+            GROUP BY COALESCE(age_group, 'unknown')
+            ORDER BY age_group
+            """
+        )
+
+        age_rows = cursor.fetchall()
+
+        age_groups = {
+            str(age_row["age_group"]): int(age_row["visitor_count"])
+            for age_row in age_rows
+        }
+
+        return {
+            "total_visits": int(row["total_visits"] or 0),
+            "average_duration": float(
+                row["average_duration"] or 0.0
+            ),
+            "male_visits": int(row["male_visits"] or 0),
+            "female_visits": int(row["female_visits"] or 0),
+            "unknown_gender_visits": int(
+                row["unknown_gender_visits"] or 0
+            ),
+            "age_groups": age_groups,
+        }
+
     def get_recent_visits(
         self,
         limit: int = 10,

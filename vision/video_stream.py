@@ -36,6 +36,7 @@ from vision.gender_estimator import GenderEstimator
 from vision.renderer import draw_person, draw_statistics
 from vision.visitor_tracker import VisitorTracker
 from database.visit_repository import VisitRepository
+from api.statistics_events import notify_statistics_updated
 
 def generate_frames() -> Generator[bytes, None, None]:
     # Create one unique identifier for this application run.
@@ -318,12 +319,16 @@ def generate_frames() -> Generator[bytes, None, None]:
                     else "unknown"
                 )
 
-                # Save the visitor exactly once, only after the visit finishes.
                 database_visit_id = visit_repository.save_visit(
                     session_id=session_id,
                     tracker_id=track_id,
                     visitor=visitor,
                 )
+
+                # The SQLite transaction has completed successfully.
+                # Notify the webpage that fresh statistics are available.
+                notify_statistics_updated()
+
 
                 print(
                     f"Visit saved: database ID {database_visit_id}, "
