@@ -4,7 +4,7 @@ A modular computer vision project that simulates the core ideas behind retail an
 
 The project uses a webcam to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics without identifying individuals.
 
-##Project Pipeline
+## Project Pipeline
 
 
 
@@ -50,4 +50,47 @@ The project uses a webcam to detect and anonymously track visitors in real time,
                        │
                        ▼
                 Render Dashboard
+## Architecture
+The project follows a modular architecture.
+
+## Camera
+Responsible only for capturing webcam frames.
+
+## Detector
+Runs YOLO to detect people.
+
+## Tracker
+Uses ByteTrack to assign temporary IDs and keep them consistent between frames.
+
+## VisitorTracker
+Maintains the lifecycle of each visitor.
+
+Each visitor stores:
+-first appearance
+-last appearance
+-visit duration
+-estimated age range
+-age confidence
+
+No personally identifiable information is stored.
+
+## Face Detector
+Detects a face only inside the detected person's bounding box.
+
+## Age Estimator
+Predicts an age range from the detected face.
+
+## Renderer
+Draws all overlays including:
+-bounding boxes
+-visitor IDs
+-visit duration
+-demographic information
+-live statistics
+
+
+
+
+
+
 
