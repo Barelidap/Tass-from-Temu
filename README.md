@@ -14,6 +14,9 @@ The application processes a live webcam feed to detect and anonymously track vis
 - Gender estimation (performed only once per visitor)
 - Live visitor statistics
 - Live video streaming through a **FastAPI** web interface
+- Live completed-visit statistics displayed beside the video stream
+- Automatic dashboard updates whenever a new visit is saved to SQLite
+- Real-time browser notifications using **Server-Sent Events**
 - SQLite persistence for completed visits
 - Modular, easy-to-extend architecture
 
@@ -74,6 +77,22 @@ The application processes a live webcam feed to detect and anonymously track vis
                        │
                        ▼
                 Web Browser
+                       │
+                       ▼                         ↑
+       Is the Visitor Missing for 2 Seconds?     |
+         │                              │        |
+        Yes                            No        |
+         ▼                              ▼        |
+Finalize Completed Visit                  -------
+             │
+             ▼
+   Save Visit to SQLite
+             │
+             ▼
+Send Statistics Update Event
+             │
+             ▼
+Refresh Web Dashboard Statistics
 ```
 
 ---
@@ -95,7 +114,10 @@ Every frame from the webcam follows the same processing pipeline:
 7. The renderer displays all live analytics on screen.
 8. If a visitor disappears from the frame, the system waits **2 seconds** before considering the visit complete. This helps avoid ending visits due to brief tracking interruptions.
 9. Once a visit is completed, its statistics are permanently stored in a local **SQLite** database.
-
+10. After the database insert is completed, the application sends a statistics update event through **Server-Sent Events**.
+11. The browser receives the event and requests the latest statistics from the FastAPI API.
+12. The statistics panel beside the video stream updates automatically without refreshing the page.
+    
 This significantly reduces unnecessary computation since demographic models are executed only once per visitor while also allowing long-term analytics to be collected across multiple sessions.
 
 ---
@@ -187,6 +209,29 @@ Draws the live visualization directly onto each processed frame before it is str
 - estimated gender
 - live visitor statistics
 
+---
+
+## Statistics Event System
+
+The statistics event system connects the computer vision pipeline with the browser dashboard.
+
+When a completed visit is successfully saved to SQLite:
+
+1. The video-processing pipeline triggers a statistics update notification.
+2. FastAPI sends the notification to connected browsers using **Server-Sent Events**.
+3. The browser requests the latest aggregated statistics from the API.
+4. The statistics panel updates automatically without reloading the page.
+
+This event-driven approach avoids repeatedly polling the database when no changes have occurred.
+
+The dashboard currently displays:
+
+- total completed visits
+- average visit duration
+- male visitor count
+- female visitor count
+- unknown gender count
+- visitor counts grouped by estimated age range
   
 ---
 
@@ -202,6 +247,12 @@ The web interface currently provides:
 - real-time object detection and tracking
 - rendered visitor analytics
 - responsive browser-based visualization
+- completed-visit statistics displayed beside the video stream
+- automatic dashboard updates after every successful SQLite insert
+- an API endpoint for retrieving the latest aggregated statistics
+- a Server-Sent Events stream for database update notifications
+
+The video and statistics use separate communication channels. The annotated frames are delivered through the continuous MJPEG stream, while completed-visit statistics are retrieved through a JSON API. A Server-Sent Events connection notifies the browser whenever the SQLite database receives a new completed visit.
 
 This architecture cleanly separates the computer vision pipeline from the presentation layer, making it easy to extend the project with future dashboards, REST APIs, or remote monitoring capabilities.
 
@@ -223,7 +274,7 @@ Each completed visit contains:
 - estimated gender
 - gender confidence
 
-The database serves as the foundation for future analytics dashboards, including:
+The database now provides statistics to the live web dashboard and also serves as the foundation for additional analytics, including:
 
 - visitors by hour
 - visitors by day
@@ -233,4 +284,4 @@ The database serves as the foundation for future analytics dashboards, including
 - traffic trends over time
 
 Only completed visits are stored. Active visitors remain in memory until they leave the scene.
-
+Whenever a completed visit is inserted into the database, the application notifies the connected web dashboard. The browser then retrieves the latest aggregated values and updates the displayed statistics automatically.
