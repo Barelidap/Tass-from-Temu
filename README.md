@@ -1,13 +1,25 @@
 # TASS from Temu
 
-A modular computer vision project that simulates the core ideas behind retail analytics systems. 
+A modular computer vision project that recreates the core ideas behind modern retail analytics systems using open-source tools.
 
-The project uses a webcam to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics without identifying individuals.
+The application processes a live webcam feed to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics **without identifying individuals**.
 
-## Project Pipeline
+## Features
 
+- Real-time person detection using **YOLO**
+- Multi-object tracking with **ByteTrack**
+- Anonymous visitor tracking
+- Face detection inside the detected person region
+- Age estimation (performed only once per visitor)
+- Gender estimation (performed only once per visitor)
+- Live visitor statistics
+- Modular, easy-to-extend architecture
 
+---
 
+# Project Pipeline
+
+```text
                     Webcam
                        │
                        ▼
@@ -28,69 +40,152 @@ The project uses a webcam to detect and anonymously track visitors in real time,
           │                         │
           └────────────┬────────────┘
                        ▼
-             Age already known?
-                │            │
-              Yes            No
-                │            ▼
-                │     Crop Person Image
-                │            │
-                │            ▼
-                │     Face Detection
-                │            │
-                │            ▼
-                │      Crop Face
-                │            │
-                │            ▼
-                │     Age Estimation
-                │            │
-                └────────────┘
+      Demographics already known?
+           │                    │
+         Yes                    No
+           │                    ▼
+           │            Crop Person Image
+           │                    │
+           │                    ▼
+           │             Face Detection
+           │                    │
+           │                    ▼
+           │              Crop Face
+           │                    │
+           │                    ▼
+           │        Estimate Missing Data
+           │          ┌──────────────┐
+           │          │              │
+           │          ▼              ▼
+           │    Age Estimation   Gender Estimation
+           │          │              │
+           └──────────┴──────────────┘
                        │
                        ▼
             Update Visitor Statistics
                        │
                        ▼
                 Render Dashboard
-### Architecture
-The project follows a modular architecture.
+```
 
-### Camera
-Responsible only for capturing webcam frames.
+---
 
-### Detector
-Runs YOLO to detect people.
+# How It Works
 
-### Tracker
-Uses ByteTrack to assign temporary IDs and keep them consistent between frames.
+Every frame from the webcam follows the same processing pipeline:
 
-### VisitorTracker
-Maintains the lifecycle of each visitor.
+1. **YOLO** detects every visible person.
+2. **ByteTrack** assigns a persistent tracking ID to each detected visitor.
+3. The **VisitorTracker** creates or updates the corresponding visitor.
+4. If the visitor's age or gender is still unknown:
+   - the person's image is cropped,
+   - the largest face is detected,
+   - the face is cropped,
+   - only the missing demographic estimator(s) are executed.
+5. The estimated information is stored inside the visitor object.
+6. Future frames reuse the stored values instead of running the models again.
+7. The renderer displays all live analytics on screen.
+
+This significantly reduces unnecessary computation since demographic models are executed only once per visitor.
+
+---
+
+# Architecture
+
+The project follows a modular architecture where each component has a single responsibility.
+
+## Camera
+
+Captures frames from the webcam.
+
+---
+
+## Detector
+
+Runs **YOLO** to detect people in each frame.
+
+Output:
+
+- person bounding boxes
+- detection confidence
+
+---
+
+## Tracker
+
+Uses **ByteTrack** to assign temporary IDs and keep them consistent across frames.
+
+Each tracked person receives a unique ID that exists only during the current visit.
+
+---
+
+## VisitorTracker
+
+Maintains the complete lifecycle of every visitor.
 
 Each visitor stores:
--first appearance
--last appearance
--visit duration
--estimated age range
--age confidence
+
+- first appearance
+- last appearance
+- visit duration
+- estimated age range
+- age confidence
+- estimated gender
+- gender confidence
+
+The tracker also ensures that demographic estimation is performed only when necessary.
 
 No personally identifiable information is stored.
 
-### Face Detector
-Detects a face only inside the detected person's bounding box.
+---
 
-### Age Estimator
-Predicts an age range from the detected face.
+## Face Detector
 
-### Renderer
-Draws all overlays including:
--bounding boxes
--visitor IDs
--visit duration
--demographic information
--live statistics
+Searches for the largest visible face only inside the detected person's bounding box.
 
+Running face detection only within the person crop makes the pipeline faster and reduces false detections.
 
+---
 
+## Age Estimator
 
+Predicts an age range from the detected face using a Vision Transformer model.
 
+The prediction is saved into the visitor object and is not recomputed once successfully estimated.
 
+---
 
+## Gender Estimator
+
+Predicts the apparent gender from the detected face.
+
+Like age estimation, gender estimation is executed only until a successful prediction is obtained, after which the result is stored for the remainder of the visit.
+
+---
+
+## Renderer
+
+Draws the live visualization, including:
+
+- person bounding boxes
+- visitor IDs
+- visit duration
+- estimated age
+- estimated gender
+- live visitor statistics
+
+---
+
+# Privacy
+
+This project is designed around anonymous retail analytics.
+
+It does **not**:
+
+- perform face recognition
+- identify individuals
+- store face images
+- store biometric templates
+- keep personally identifiable information
+
+Only temporary visitor statistics are maintained while a visitor is present in the scene.
