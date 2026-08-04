@@ -6,6 +6,8 @@ The project uses a webcam to detect and anonymously track visitors in real time,
 
 ##Project Pipeline
 
+
+
                     Webcam
                        │
                        ▼
@@ -20,7 +22,7 @@ The project uses a webcam to detect and anonymously track visitors in real time,
           ┌────────────┴────────────┐
           │                         │
           ▼                         ▼
-  Existing Visitor?           New Visitor
+      Existing Visitor?        New Visitor
           │                         │
           │                  Create Visitor
           │                         │
