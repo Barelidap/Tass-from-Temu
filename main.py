@@ -3,8 +3,8 @@ import time
 import cv2
 from ultralytics import YOLO
 
-from app.camera import Camera
-from app.config import (
+from vision.camera import Camera
+from vision.config import (
     CAMERA_HEIGHT,
     CAMERA_INDEX,
     CAMERA_WIDTH,
@@ -13,11 +13,11 @@ from app.config import (
     MODEL_PATH,
     WINDOW_NAME,
 )
-from app.renderer import (
+from vision.renderer import (
     draw_person,
     draw_statistics,
 )
-from app.visitor_tracker import VisitorTracker
+from vision.visitor_tracker import VisitorTracker
 
 
 def main() -> None:
