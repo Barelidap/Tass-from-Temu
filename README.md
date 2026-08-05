@@ -4,7 +4,8 @@ A modular computer vision project that recreates the core ideas behind modern re
 
 The application processes a live webcam feed to detect and anonymously track visitors in real time, estimate demographic information, and collect analytics.
 
-<img width="859" height="737" alt="Screenshot 2026-08-05 at 5 02 14 AM" src="https://github.com/user-attachments/assets/60c3c2a0-9786-474b-9ce5-7b9f01336c92" />
+![Uploading Screenshot 2026-08-05 at 1.50.54 PM.png…]()
+
 
 
 
