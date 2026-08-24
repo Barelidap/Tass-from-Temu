@@ -1,4 +1,4 @@
-# TASS from Temu
+# Retail Customer Analysis
 
 A modular computer vision project that recreates the core ideas behind modern retail analytics systems using open-source tools.
 
